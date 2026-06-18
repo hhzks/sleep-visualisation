@@ -58,17 +58,22 @@ def create_sleep_chart(sleep_records, title="Sleep Log Visualization", save_path
             records_by_date[date] = []
         records_by_date[date].append(record)
     
-    # Determine date range
-    if start_date and end_date:
+    # Determine date range. Bound the chart to the span of days that actually
+    # have sleep data, so the top row is the first day of sleep and the bottom
+    # is the last. An explicit start/end window narrows this further but never
+    # pads empty leading/trailing days onto the ends. (Interior days with no
+    # data still render as empty rows to keep the timeline continuous.)
+    if sleep_records:
+        data_dates = [datetime.strptime(r['date_of_sleep'], '%Y-%m-%d') for r in sleep_records]
+        start_dt = min(data_dates)
+        end_dt = max(data_dates)
+        if start_date and end_date:
+            start_dt = max(start_dt, datetime.strptime(start_date, '%Y-%m-%d'))
+            end_dt = min(end_dt, datetime.strptime(end_date, '%Y-%m-%d'))
+    else:
+        # No records, but an explicit window was supplied: show the empty window.
         start_dt = datetime.strptime(start_date, '%Y-%m-%d')
         end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-    elif sleep_records:
-        all_dates = [datetime.strptime(r['date_of_sleep'], '%Y-%m-%d') for r in sleep_records]
-        start_dt = min(all_dates)
-        end_dt = max(all_dates)
-    else:
-        print("No sleep records to display")
-        return None
     
     # Generate all dates in range
     all_dates = []
@@ -90,7 +95,21 @@ def create_sleep_chart(sleep_records, title="Sleep Log Visualization", save_path
     def to_chart_hours(dt):
         hours = dt.hour + dt.minute / 60
         return hours
-    
+
+    # Helper to draw a sleep bar. If the bar runs past 24:00 (midnight), the
+    # overflow is wrapped back to the left edge (starting at 0) so a sleep
+    # period that crosses midnight fills the start of the row instead of being
+    # clipped off the right.
+    def draw_bar(row, start, width, color):
+        if start + width > 24:
+            ax.barh(row, 24 - start, left=start, height=0.6,
+                    color=color, edgecolor='white', linewidth=0.5)
+            ax.barh(row, start + width - 24, left=0, height=0.6,
+                    color=color, edgecolor='white', linewidth=0.5)
+        else:
+            ax.barh(row, width, left=start, height=0.6,
+                    color=color, edgecolor='white', linewidth=0.5)
+
     for idx, date in enumerate(all_dates):
         if date not in records_by_date:
             # No sleep data for this date - leave row empty
@@ -115,9 +134,8 @@ def create_sleep_chart(sleep_records, title="Sleep Log Visualization", save_path
                         color = SLEEP_COLORS.get(level_type, '#9e9e9e')
                         legend_label = level_type
                     
-                    bar = ax.barh(idx, duration_hours, left=start_hour, height=0.6,
-                                 color=color, edgecolor='white', linewidth=0.5)
-                    
+                    draw_bar(idx, start_hour, duration_hours, color)
+
                     if legend_label not in legend_items:
                         legend_items[legend_label] = color
             else:
@@ -132,9 +150,8 @@ def create_sleep_chart(sleep_records, title="Sleep Log Visualization", save_path
                 
                 color = single_color if single_color else SLEEP_COLORS['asleep']
                 
-                bar = ax.barh(idx, duration, left=start_hour, height=0.6,
-                             color=color, edgecolor='white', linewidth=0.5)
-                
+                draw_bar(idx, start_hour, duration, color)
+
                 if 'Sleep' not in legend_items:
                     legend_items['Sleep'] = color
     

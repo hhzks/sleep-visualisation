@@ -58,7 +58,7 @@ python main.py
 python main.py --days 7
 
 # Get specific date range
-python main.py --start 2026-01-01 --end 2026-01-25
+python main.py --start 2026-06-01 --end 2026-06-18
 
 # Run with demo data (no API needed)
 python main.py --demo

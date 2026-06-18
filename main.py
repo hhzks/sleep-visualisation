@@ -8,7 +8,7 @@ visualizations showing sleep periods throughout each day.
 Usage:
     python main.py                    # Get last 30 days of sleep data
     python main.py --days 7           # Get last 7 days
-    python main.py --start 2026-01-01 --end 2026-01-25  # Specific date range
+    python main.py --start 2026-06-01 --end 2026-06-18  # Specific date range
     python main.py --demo             # Run with demo data (no API needed)
 """
 
@@ -33,7 +33,7 @@ def get_demo_data():
     import random
     
     records = []
-    base_date = datetime(2026, 1, 25)
+    base_date = datetime.now()
     
     for i in range(14):
         date = base_date - timedelta(days=i)
@@ -69,7 +69,7 @@ def get_demo_data():
         for stage in stages:
             if remaining <= 0:
                 break
-            duration = random.randint(15, min(90, remaining))
+            duration = min(random.randint(15, 90), remaining)
             levels_data.append({
                 'dateTime': current_time.isoformat(),
                 'level': stage,
@@ -157,7 +157,7 @@ def main():
 Examples:
   python main.py                    Get last 30 days of sleep data
   python main.py --days 7           Get last 7 days
-  python main.py --start 2026-01-01 --end 2026-01-25
+  python main.py --start 2026-06-01 --end 2026-06-18
                                     Get specific date range
   python main.py --demo             Run with demo data (no API needed)
   python main.py --no-display       Save charts but don't display them
