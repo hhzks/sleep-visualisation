@@ -25,7 +25,7 @@ pip install -r requirements.txt
 2. Log in with your Fitbit account
 3. Register a new application:
    - **Application Name**: Sleep Tracker (or any name)
-   - **Description**: Personal sleep tracking application
+   - **Description**: Personal sleep tracking application (or anything else)
    - **Application Website**: http://localhost
    - **Organization**: Personal
    - **Organization Website**: http://localhost
@@ -39,7 +39,13 @@ pip install -r requirements.txt
 
 ### 3. Configure the Application
 
-Edit `config.py` and add your credentials:
+Copy the example config, then add your credentials:
+
+```bash
+cp config.example.py config.py
+```
+
+Edit `config.py`:
 
 ```python
 CLIENT_ID = "your_client_id_here"
@@ -75,6 +81,9 @@ python main.py --no-display
 
 # Display charts without saving
 python main.py --no-save
+
+# Color all sleep periods with one color (default: #4809db)
+python main.py --single-color "#2196f3"
 ```
 
 ## Output
@@ -82,7 +91,9 @@ python main.py --no-save
 The application generates three types of charts:
 
 ### 1. Sleep Periods Chart (`sleep_periods.png`)
-A horizontal bar chart showing when you slept each day. Time is displayed on the X-axis (6 PM to 6 PM), and each day is a row. Different colors represent sleep stages:
+A horizontal bar chart showing when you slept each day. The X-axis is the time of day (midnight to midnight, 00:00–24:00) and each row is a day. The chart spans from your first day of sleep (top) to your last (bottom), and sleep that crosses midnight wraps around to the left edge of the same row.
+
+By default every sleep period is drawn in a single colour (`#4809db`, change it with `--single-color`). Pass an empty value (`--single-color ""`) to instead color each sleep stage:
 - **Dark Blue**: Deep sleep
 - **Light Blue**: Light sleep
 - **Purple**: REM sleep
@@ -108,7 +119,8 @@ Tokens are stored in `fitbit_tokens.json` and will be automatically refreshed wh
 ## Files
 
 - `main.py` - Main application entry point
-- `config.py` - Configuration settings (API credentials)
+- `config.example.py` - Configuration template (copy to `config.py`)
+- `config.py` - Your API credentials
 - `fitbit_auth.py` - OAuth2 authentication module
 - `sleep_api.py` - Fitbit Sleep API client
 - `sleep_chart.py` - Visualization functions
