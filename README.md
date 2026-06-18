@@ -2,10 +2,6 @@
 
 A Python application that retrieves sleep data from the Fitbit API and creates visualizations showing your sleep patterns over time.
 
-<img width="500" height="250" alt="sleep_duration" src="https://github.com/user-attachments/assets/c239ac08-5bd6-4a90-8047-b68b53369ce7" />
-<img width="500" height="250" alt="sleep_stages" src="https://github.com/user-attachments/assets/5b1f7133-b3e4-4a30-b82b-f8b99db8aa08" />
-<img width="500" height="250" alt="sleep_periods" src="https://github.com/user-attachments/assets/bb6b59cb-833d-404d-bfcd-cf9b46c7ced3" />
-
 ## Features
 
 - **OAuth2 Authentication**: Secure authentication with Fitbit's API using PKCE
@@ -95,6 +91,9 @@ python main.py --single-color "#2196f3"
 The application generates three types of charts:
 
 ### 1. Sleep Periods Chart (`sleep_periods.png`)
+
+<img width="800" height="400" alt="sleep_periods" src="https://github.com/user-attachments/assets/bb6b59cb-833d-404d-bfcd-cf9b46c7ced3" />
+
 A horizontal bar chart showing when you slept each day. The X-axis is the time of day (midnight to midnight, 00:00–24:00) and each row is a day. The chart spans from your first day of sleep (top) to your last (bottom), and sleep that crosses midnight wraps around to the left edge of the same row.
 
 By default every sleep period is drawn in a single colour (`#4809db`, change it with `--single-color`). Pass an empty value (`--single-color ""`) to instead color each sleep stage:
@@ -104,9 +103,15 @@ By default every sleep period is drawn in a single colour (`#4809db`, change it 
 - **Amber**: Wake periods
 
 ### 2. Sleep Duration Chart (`sleep_duration.png`)
+
+<img width="800" height="400" alt="sleep_duration" src="https://github.com/user-attachments/assets/c239ac08-5bd6-4a90-8047-b68b53369ce7" />
+
 A line chart showing your total sleep duration for each day, with reference lines for recommended (8 hours) and minimum (7 hours) sleep.
 
 ### 3. Sleep Stages Chart (`sleep_stages.png`)
+
+<img width="800" height="400" alt="sleep_stages" src="https://github.com/user-attachments/assets/5b1f7133-b3e4-4a30-b82b-f8b99db8aa08" />
+
 A stacked bar chart showing the distribution of sleep stages for each day.
 
 ## Authentication
