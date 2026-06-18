@@ -1,6 +1,7 @@
 # Fitbit Sleep Log Visualization
 
 A Python application that retrieves sleep data from the Fitbit API and creates visualizations showing your sleep patterns over time.
+
 <img width="500" height="250" alt="sleep_duration" src="https://github.com/user-attachments/assets/c239ac08-5bd6-4a90-8047-b68b53369ce7" />
 <img width="500" height="250" alt="sleep_stages" src="https://github.com/user-attachments/assets/5b1f7133-b3e4-4a30-b82b-f8b99db8aa08" />
 <img width="500" height="250" alt="sleep_periods" src="https://github.com/user-attachments/assets/bb6b59cb-833d-404d-bfcd-cf9b46c7ced3" />
