@@ -24,13 +24,38 @@ SLEEP_COLORS = {
 }
 
 
+DEFAULT_DPI = 150
+
+
+def _figsize(default_w_in, default_h_in, width=None, height=None, dpi=DEFAULT_DPI):
+    """
+    Return a matplotlib figsize in inches.
+    width/height are in pixels; a value that is None keeps the default.
+    """
+    w = width / dpi if width else default_w_in
+    h = height / dpi if height else default_h_in
+    return (w, h)
+
+
+def _save(save_path, dpi=DEFAULT_DPI, exact=False):
+    """
+    Save the current figure. With exact=True, the image is exactly
+    figsize * dpi pixels (no 'tight' cropping of the border).
+    """
+    if exact:
+        plt.savefig(save_path, dpi=dpi)
+    else:
+        plt.savefig(save_path, dpi=dpi, bbox_inches='tight')
+    print(f"Chart saved to: {save_path}")
+
+
 def time_to_hours(time_str):
     """Convert ISO time string to hours since midnight."""
     dt = date_parser.parse(time_str)
     return dt.hour + dt.minute / 60 + dt.second / 3600
 
 
-def create_sleep_chart(sleep_records, title="Sleep Log Visualization", save_path=None, single_color=None, start_date=None, end_date=None):
+def create_sleep_chart(sleep_records, title="Sleep Log Visualization", save_path=None, single_color=None, start_date=None, end_date=None, width=None, height=None, dpi=DEFAULT_DPI):
     """
     Create a horizontal bar chart showing sleep periods for each day.
     
@@ -83,7 +108,7 @@ def create_sleep_chart(sleep_records, title="Sleep Log Visualization", save_path
         current += timedelta(days=1)
     
     # Create figure
-    fig, ax = plt.subplots(figsize=(14, max(6, len(all_dates) * 0.3)))
+    fig, ax = plt.subplots(figsize=_figsize(14, max(6, len(all_dates) * 0.3), width, height, dpi))
     
     # Y-axis: all dates in range
     y_positions = range(len(all_dates))
@@ -193,13 +218,12 @@ def create_sleep_chart(sleep_records, title="Sleep Log Visualization", save_path
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Chart saved to: {save_path}")
+        _save(save_path, dpi, exact=bool(width or height))
     
     return fig
 
 
-def create_sleep_duration_chart(sleep_records, title="Sleep Duration Over Time", save_path=None):
+def create_sleep_duration_chart(sleep_records, title="Sleep Duration Over Time", save_path=None, width=None, height=None, dpi=DEFAULT_DPI):
     """
     Create a line chart showing sleep duration for each day.
     
@@ -222,7 +246,7 @@ def create_sleep_duration_chart(sleep_records, title="Sleep Duration Over Time",
     dates = [datetime.strptime(r['date_of_sleep'], '%Y-%m-%d') for r in main_sleep]
     durations = [r['duration_hours'] for r in main_sleep]
     
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=_figsize(12, 6, width, height, dpi))
     
     # Plot line and scatter
     ax.plot(dates, durations, 'b-', linewidth=2, alpha=0.7)
@@ -252,13 +276,12 @@ def create_sleep_duration_chart(sleep_records, title="Sleep Duration Over Time",
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Chart saved to: {save_path}")
+        _save(save_path, dpi, exact=bool(width or height))
     
     return fig
 
 
-def create_sleep_stages_summary(sleep_records, title="Sleep Stages Summary", save_path=None):
+def create_sleep_stages_summary(sleep_records, title="Sleep Stages Summary", save_path=None, width=None, height=None, dpi=DEFAULT_DPI):
     """
     Create a stacked bar chart showing sleep stage distribution per day.
     
@@ -287,7 +310,7 @@ def create_sleep_stages_summary(sleep_records, title="Sleep Stages Summary", sav
     rem = [r['stages_summary']['rem'] for r in records_with_stages]
     wake = [r['stages_summary']['wake'] for r in records_with_stages]
     
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=_figsize(12, 6, width, height, dpi))
     
     x = range(len(dates))
     width = 0.7
@@ -309,13 +332,12 @@ def create_sleep_stages_summary(sleep_records, title="Sleep Stages Summary", sav
     plt.tight_layout()
     
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Chart saved to: {save_path}")
+        _save(save_path, dpi, exact=bool(width or height))
     
     return fig
 
 
-def create_all_charts(sleep_records, output_dir=".", single_color=None, start_date=None, end_date=None):
+def create_all_charts(sleep_records, output_dir=".", single_color=None, start_date=None, end_date=None, width=None, height=None, dpi=DEFAULT_DPI):
     """
     Create all available charts for the sleep data.
     
@@ -325,6 +347,8 @@ def create_all_charts(sleep_records, output_dir=".", single_color=None, start_da
         single_color: Optional color to use for all sleep periods in the sleep chart
         start_date: Optional start date string (YYYY-MM-DD) for the date range
         end_date: Optional end date string (YYYY-MM-DD) for the date range
+        width, height: Optional image size in pixels (None keeps the default)
+        dpi: Image resolution (pixels per inch)
     
     Returns:
         List of figure objects
@@ -338,7 +362,8 @@ def create_all_charts(sleep_records, output_dir=".", single_color=None, start_da
         save_path=f"{output_dir}/sleep_periods.png",
         single_color=single_color,
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
+        width=width, height=height, dpi=dpi
     )
     if fig1:
         figures.append(fig1)
@@ -347,7 +372,8 @@ def create_all_charts(sleep_records, output_dir=".", single_color=None, start_da
     fig2 = create_sleep_duration_chart(
         sleep_records,
         title="Sleep Duration Over Time",
-        save_path=f"{output_dir}/sleep_duration.png"
+        save_path=f"{output_dir}/sleep_duration.png",
+        width=width, height=height, dpi=dpi
     )
     if fig2:
         figures.append(fig2)
@@ -356,7 +382,8 @@ def create_all_charts(sleep_records, output_dir=".", single_color=None, start_da
     fig3 = create_sleep_stages_summary(
         sleep_records,
         title="Sleep Stages Distribution",
-        save_path=f"{output_dir}/sleep_stages.png"
+        save_path=f"{output_dir}/sleep_stages.png",
+        width=width, height=height, dpi=dpi
     )
     if fig3:
         figures.append(fig3)

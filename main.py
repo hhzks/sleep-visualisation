@@ -1,8 +1,8 @@
 """
-Fitbit Sleep Log Visualization
+Sleep Log Visualization
 Main application entry point.
 
-This program retrieves sleep logs from the Fitbit API and creates
+This program retrieves sleep logs from the Google Health API and creates
 visualizations showing sleep periods throughout each day.
 
 Usage:
@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
-from fitbit_auth import authenticate
-from sleep_api import FitbitSleepAPI, parse_sleep_data
+from google_auth import authenticate
+from sleep_api import GoogleHealthSleepAPI, parse_sleep_data
 from sleep_chart import (
     create_sleep_chart,
     create_sleep_duration_chart,
@@ -134,7 +134,9 @@ def print_sleep_summary(records):
     for record in sorted(main_sleep, key=lambda x: x['date_of_sleep'], reverse=True)[:10]:
         date = record['date_of_sleep']
         duration = record['duration_hours']
-        efficiency = record.get('efficiency', 'N/A')
+        efficiency = record.get('efficiency')
+        if efficiency is None:
+            efficiency = 'N/A'
         
         start = record.get('start_time', '')
         if start:
@@ -151,7 +153,7 @@ def print_sleep_summary(records):
 def main():
     """Main application entry point."""
     parser = argparse.ArgumentParser(
-        description='Retrieve and visualize Fitbit sleep data',
+        description='Retrieve and visualize Google Health sleep data',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -161,6 +163,8 @@ Examples:
                                     Get specific date range
   python main.py --demo             Run with demo data (no API needed)
   python main.py --no-display       Save charts but don't display them
+  python main.py --width 1600 --height 900
+                                    Save charts at exactly 1600x900 pixels
         """
     )
     
@@ -181,7 +185,15 @@ Examples:
     parser.add_argument('--single-color', type=str, default="#4809db",
                        help='Use a single color for all sleep periods (e.g., "blue" or "#2196f3")')
     
+    parser.add_argument('--width', type=int,
+                       help='Image width in pixels (default: chart-specific)')
+    parser.add_argument('--height', type=int,
+                       help='Image height in pixels (default: chart-specific)')
+    parser.add_argument('--dpi', type=int, default=150,
+                       help='Image resolution in dots per inch (default: 150)')
+    
     args = parser.parse_args()
+    size = {'width': args.width, 'height': args.height, 'dpi': args.dpi}
     
     # Create output directory if needed
     if not args.no_save and not os.path.exists(args.output):
@@ -192,8 +204,8 @@ Examples:
         print("Running in demo mode with generated data...")
         sleep_records = get_demo_data()
     else:
-        # Authenticate with Fitbit
-        print("Authenticating with Fitbit...")
+        # Authenticate with Google
+        print("Authenticating with Google Health...")
         access_token = authenticate()
         
         if not access_token:
@@ -201,12 +213,12 @@ Examples:
             sys.exit(1)
         
         # Create API client
-        api = FitbitSleepAPI(access_token)
+        api = GoogleHealthSleepAPI(access_token)
         
         try:
             if args.start and args.end:
                 print(f"Retrieving sleep data from {args.start} to {args.end}...")
-                data = api.get_sleep_log_range_chunked(args.start, args.end)
+                data = api.get_sleep_log_range(args.start, args.end)
             else:
                 print(f"Retrieving last {args.days} days of sleep data...")
                 data = api.get_recent_sleep_logs(days=args.days)
@@ -234,13 +246,13 @@ Examples:
     if args.no_save:
         # Just display, don't save
         create_sleep_chart(sleep_records, "Sleep Periods by Day", single_color=args.single_color,
-                          start_date=chart_start_date, end_date=chart_end_date)
-        create_sleep_duration_chart(sleep_records, "Sleep Duration Over Time")
-        create_sleep_stages_summary(sleep_records, "Sleep Stages Distribution")
+                          start_date=chart_start_date, end_date=chart_end_date, **size)
+        create_sleep_duration_chart(sleep_records, "Sleep Duration Over Time", **size)
+        create_sleep_stages_summary(sleep_records, "Sleep Stages Distribution", **size)
     else:
         # Save to files
         create_all_charts(sleep_records, args.output, single_color=args.single_color,
-                         start_date=chart_start_date, end_date=chart_end_date)
+                         start_date=chart_start_date, end_date=chart_end_date, **size)
     
     if not args.no_display:
         print("\nDisplaying charts...")
