@@ -1,6 +1,6 @@
 """
-Fitbit OAuth2 Authentication Module
-Handles the OAuth2 flow for Fitbit API access.
+Google Health API OAuth2 Authentication Module
+Handles the Google OAuth2 flow for Google Health API access.
 """
 
 import base64
@@ -18,7 +18,7 @@ from config import (
     AUTHORIZATION_URL, TOKEN_URL, SCOPE
 )
 
-TOKEN_FILE = "fitbit_tokens.json"
+TOKEN_FILE = "google_health_tokens.json"
 
 
 def generate_code_verifier():
@@ -34,13 +34,14 @@ def generate_code_challenge(verifier):
 
 class CallbackHandler(BaseHTTPRequestHandler):
     """HTTP handler to capture OAuth2 callback."""
-    
+
     def do_GET(self):
         """Handle GET request from OAuth2 callback."""
         query = parse_qs(urlparse(self.path).query)
-        
+
         if 'code' in query:
             self.server.auth_code = query['code'][0]
+            self.server.auth_state = query.get('state', [None])[0]
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
@@ -66,46 +67,44 @@ class CallbackHandler(BaseHTTPRequestHandler):
                 </body>
                 </html>
             """.encode())
-    
+
     def log_message(self, format, *args):
         """Suppress logging."""
         pass
 
 
-def get_authorization_url(code_challenge):
-    """Build the authorization URL."""
+def get_authorization_url(code_challenge, state):
+    """Build the Google authorization URL."""
     params = {
         'client_id': CLIENT_ID,
         'response_type': 'code',
+        'redirect_uri': REDIRECT_URI,
+        'scope': SCOPE,
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256',
-        'redirect_uri': REDIRECT_URI,
-        'scope': SCOPE
+        'state': state,
+        # Ask Google for a refresh token so later runs do not need the browser.
+        'access_type': 'offline',
+        # Force the consent screen so Google issues a new refresh token.
+        # This flow runs only when no usable refresh token exists.
+        'prompt': 'consent',
     }
     return f"{AUTHORIZATION_URL}?{urlencode(params)}"
 
 
 def exchange_code_for_tokens(auth_code, code_verifier):
     """Exchange authorization code for access tokens."""
-    # Create Basic Auth header
-    credentials = f"{CLIENT_ID}:{CLIENT_SECRET}"
-    encoded_credentials = base64.b64encode(credentials.encode()).decode()
-    
-    headers = {
-        'Authorization': f'Basic {encoded_credentials}',
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    
     data = {
         'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
         'grant_type': 'authorization_code',
         'code': auth_code,
         'code_verifier': code_verifier,
-        'redirect_uri': REDIRECT_URI
+        'redirect_uri': REDIRECT_URI,
     }
-    
-    response = requests.post(TOKEN_URL, headers=headers, data=data)
-    
+
+    response = requests.post(TOKEN_URL, data=data)
+
     if response.status_code == 200:
         return response.json()
     else:
@@ -114,23 +113,20 @@ def exchange_code_for_tokens(auth_code, code_verifier):
 
 def refresh_access_token(refresh_token):
     """Refresh the access token using the refresh token."""
-    credentials = f"{CLIENT_ID}:{CLIENT_SECRET}"
-    encoded_credentials = base64.b64encode(credentials.encode()).decode()
-    
-    headers = {
-        'Authorization': f'Basic {encoded_credentials}',
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    
     data = {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
         'grant_type': 'refresh_token',
-        'refresh_token': refresh_token
+        'refresh_token': refresh_token,
     }
-    
-    response = requests.post(TOKEN_URL, headers=headers, data=data)
-    
+
+    response = requests.post(TOKEN_URL, data=data)
+
     if response.status_code == 200:
-        return response.json()
+        new_tokens = response.json()
+        # Google usually does not send the refresh token again. Keep the old one.
+        new_tokens.setdefault('refresh_token', refresh_token)
+        return new_tokens
     else:
         raise Exception(f"Token refresh failed: {response.text}")
 
@@ -156,9 +152,8 @@ def authenticate():
     """
     # Check for existing tokens
     tokens = load_tokens()
-    
-    if tokens:
-        # Try to use existing token, refresh if needed
+
+    if tokens and tokens.get('refresh_token'):
         try:
             print("Found existing tokens, attempting to refresh...")
             new_tokens = refresh_access_token(tokens['refresh_token'])
@@ -168,44 +163,45 @@ def authenticate():
         except Exception as e:
             print(f"Token refresh failed: {e}")
             print("Starting new authentication flow...")
-    
-    # Generate PKCE codes
+
+    # Generate PKCE codes and CSRF state
     code_verifier = generate_code_verifier()
     code_challenge = generate_code_challenge(code_verifier)
-    
-    # Build authorization URL
-    auth_url = get_authorization_url(code_challenge)
-    
+    state = secrets.token_urlsafe(32)
+
+    auth_url = get_authorization_url(code_challenge, state)
+
     print("\n" + "="*60)
-    print("FITBIT AUTHENTICATION")
+    print("GOOGLE HEALTH AUTHENTICATION")
     print("="*60)
-    print("\nOpening browser for Fitbit authorization...")
+    print("\nOpening browser for Google authorization...")
     print("If the browser doesn't open, visit this URL manually:\n")
     print(auth_url)
     print("\n" + "="*60)
-    
-    # Open browser
+
     webbrowser.open(auth_url)
-    
+
     # Start local server to capture callback
     parsed_uri = urlparse(REDIRECT_URI)
     port = parsed_uri.port or 8080
-    
+
     server = HTTPServer(('localhost', port), CallbackHandler)
     server.auth_code = None
-    
+    server.auth_state = None
+
     print(f"\nWaiting for authorization callback on port {port}...")
-    
-    # Wait for callback
+
     server.handle_request()
-    
+
     if server.auth_code:
+        if server.auth_state != state:
+            print("\nAuthentication failed: state mismatch in callback.")
+            return None
+
         print("\nAuthorization code received! Exchanging for tokens...")
-        
-        # Exchange code for tokens
         tokens = exchange_code_for_tokens(server.auth_code, code_verifier)
         save_tokens(tokens)
-        
+
         print("Authentication successful!")
         return tokens['access_token']
     else:
